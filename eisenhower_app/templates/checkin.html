@@ -1,0 +1,81 @@
+{% extends "base.html" %} {% block content %}
+<h2>Weekly Check-In</h2>
+{% for message in get_flashed_messages(with_categories=true) %}
+<div class="alert alert-{{ message[0] }}">{{ message[1] }}</div>
+{% endfor %}
+
+<!-- Completed Tasks This Week -->
+<h3>Completed This Week</h3>
+{% if completed_tasks %}
+<p>Total: {{ completed_tasks|length }}</p>
+<ul>
+  {% for task in completed_tasks %}
+  <li>{{ task.title }} (Completed: {{ task.created_at|datetimeformat }})</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No tasks completed this week.</p>
+{% endif %}
+
+<!-- Overdue Tasks -->
+<h3>Overdue Tasks</h3>
+{% if overdue_tasks %}
+<ul>
+  {% for task in overdue_tasks %}
+  <li class="overdue">
+    {{ task.title }} (Due: {{ task.due_date }})
+    <a
+      href="{{ url_for('edit_task', task_id=task.id) }}"
+      class="btn btn-sm btn-warning"
+      >Edit</a
+    >
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No overdue tasks.</p>
+{% endif %}
+
+<!-- Upcoming Tasks (Next 7 Days) -->
+<h3>Upcoming Tasks (Next 7 Days)</h3>
+{% if upcoming_tasks %}
+<ul>
+  {% for task in upcoming_tasks %}
+  <li>
+    {{ task.title }} (Due: {{ task.due_date }})
+    <a
+      href="{{ url_for('edit_task', task_id=task.id) }}"
+      class="btn btn-sm btn-warning"
+      >Edit</a
+    >
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No tasks due in the next 7 days.</p>
+{% endif %}
+
+<!-- Suggested Priorities -->
+{% if suggested_tasks %}
+<h3>Suggested Priorities</h3>
+<ul>
+  {% for task in suggested_tasks %}
+  <li
+    class="{% if task.due_date and task.due_date < today %}overdue{% endif %}"
+  >
+    {{ task.title }} (Priority: {{ task.priority|round(2) }}) {% if
+    task.due_date %} (Due: {{ task.due_date }}) {% endif %}
+    <a
+      href="{{ url_for('edit_task', task_id=task.id) }}"
+      class="btn btn-sm btn-warning"
+      >Edit</a
+    >
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<a href="{{ url_for('tasks') }}" class="btn btn-primary mt-3">Back to Tasks</a>
+<a href="{{ url_for('report') }}" class="btn btn-info mt-3">Full Report</a>
+{% endblock %} {% filter datetimeformat %} {{
+value|default(current_time)|datetimeformat('%Y-%m-%d') }} {% endfilter %}

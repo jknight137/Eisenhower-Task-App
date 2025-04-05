@@ -1,0 +1,59 @@
+body {
+  font-family: Arial, sans-serif;
+}
+
+/* Flash message styling */
+.alert {
+  margin-top: 10px;
+  padding: 15px;
+  border-radius: 5px;
+}
+
+/* Quadrant styling */
+.border-danger {
+  border: 2px solid red;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+.border-success {
+  border: 2px solid green;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+.border-warning {
+  border: 2px solid orange;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+.border-secondary {
+  border: 2px solid gray;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+
+/* Completed tasks */
+.completed {
+  text-decoration: line-through;
+  color: gray;
+}
+
+/* Task list items */
+ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+li {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.overdue {
+  color: red;
+  font-weight: bold;
+}
+
+/* Buttons */
+.btn-sm {
+  margin-left: 5px;
+}

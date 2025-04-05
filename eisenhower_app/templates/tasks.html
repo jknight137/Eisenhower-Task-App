@@ -1,0 +1,159 @@
+{% extends "base.html" %} {% block content %}
+<h2>Your Tasks</h2>
+{% for message in get_flashed_messages(with_categories=true) %}
+<div class="alert alert-{{ message[0] }}">{{ message[1] }}</div>
+{% endfor %} {% if suggested_tasks %}
+<h3>Suggested Tasks (Top Priority)</h3>
+<ul>
+  {% for task in suggested_tasks %}
+  <li
+    class="{% if task.completed %}completed{% elif task.due_date and task.due_date < today %}overdue{% endif %}"
+  >
+    {{ task.title }} (Priority: {{ task.priority|round(2) }}) {% if
+    task.due_date %} (Due: {{ task.due_date }}) {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<div class="row">
+  <div class="col-md-6">
+    <h3 class="border-danger">
+      Urgent & Important ({{ tasks|selectattr('urgency', 'equalto',
+      'urgent')|selectattr('importance', 'equalto', 'important')|list|length }})
+    </h3>
+    <ul>
+      {% for task in tasks if task.urgency == 'urgent' and task.importance ==
+      'important' %}
+      <li
+        class="{% if task.completed %}completed{% elif task.due_date and task.due_date < today %}overdue{% endif %}"
+      >
+        {{ task.title }} {% if task.due_date %} (Due: {{ task.due_date }}) {%
+        endif %}
+        <a
+          href="{{ url_for('edit_task', task_id=task.id) }}"
+          class="btn btn-sm btn-warning"
+          >Edit</a
+        >
+        <a
+          href="{{ url_for('delete_task', task_id=task.id) }}"
+          class="btn btn-sm btn-danger"
+          >Delete</a
+        >
+        <a
+          href="{{ url_for('toggle_task', task_id=task.id) }}"
+          class="btn btn-sm btn-success"
+        >
+          {{ 'Undo' if task.completed else 'Done' }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="col-md-6">
+    <h3 class="border-success">
+      Important, Not Urgent ({{ tasks|selectattr('urgency', 'equalto', 'not
+      urgent')|selectattr('importance', 'equalto', 'important')|list|length }})
+    </h3>
+    <ul>
+      {% for task in tasks if task.urgency == 'not urgent' and task.importance
+      == 'important' %}
+      <li
+        class="{% if task.completed %}completed{% elif task.due_date and task.due_date < today %}overdue{% endif %}"
+      >
+        {{ task.title }} {% if task.due_date %} (Due: {{ task.due_date }}) {%
+        endif %}
+        <a
+          href="{{ url_for('edit_task', task_id=task.id) }}"
+          class="btn btn-sm btn-warning"
+          >Edit</a
+        >
+        <a
+          href="{{ url_for('delete_task', task_id=task.id) }}"
+          class="btn btn-sm btn-danger"
+          >Delete</a
+        >
+        <a
+          href="{{ url_for('toggle_task', task_id=task.id) }}"
+          class="btn btn-sm btn-success"
+        >
+          {{ 'Undo' if task.completed else 'Done' }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+<div class="row">
+  <div class="col-md-6">
+    <h3 class="border-warning">
+      Urgent, Not Important ({{ tasks|selectattr('urgency', 'equalto',
+      'urgent')|selectattr('importance', 'equalto', 'not important')|list|length
+      }})
+    </h3>
+    <ul>
+      {% for task in tasks if task.urgency == 'urgent' and task.importance ==
+      'not important' %}
+      <li
+        class="{% if task.completed %}completed{% elif task.due_date and task.due_date < today %}overdue{% endif %}"
+      >
+        {{ task.title }} {% if task.due_date %} (Due: {{ task.due_date }}) {%
+        endif %}
+        <a
+          href="{{ url_for('edit_task', task_id=task.id) }}"
+          class="btn btn-sm btn-warning"
+          >Edit</a
+        >
+        <a
+          href="{{ url_for('delete_task', task_id=task.id) }}"
+          class="btn btn-sm btn-danger"
+          >Delete</a
+        >
+        <a
+          href="{{ url_for('toggle_task', task_id=task.id) }}"
+          class="btn btn-sm btn-success"
+        >
+          {{ 'Undo' if task.completed else 'Done' }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="col-md-6">
+    <h3 class="border-secondary">
+      Not Urgent, Not Important ({{ tasks|selectattr('urgency', 'equalto', 'not
+      urgent')|selectattr('importance', 'equalto', 'not important')|list|length
+      }})
+    </h3>
+    <ul>
+      {% for task in tasks if task.urgency == 'not urgent' and task.importance
+      == 'not important' %}
+      <li
+        class="{% if task.completed %}completed{% elif task.due_date and task.due_date < today %}overdue{% endif %}"
+      >
+        {{ task.title }} {% if task.due_date %} (Due: {{ task.due_date }}) {%
+        endif %}
+        <a
+          href="{{ url_for('edit_task', task_id=task.id) }}"
+          class="btn btn-sm btn-warning"
+          >Edit</a
+        >
+        <a
+          href="{{ url_for('delete_task', task_id=task.id) }}"
+          class="btn btn-sm btn-danger"
+          >Delete</a
+        >
+        <a
+          href="{{ url_for('toggle_task', task_id=task.id) }}"
+          class="btn btn-sm btn-success"
+        >
+          {{ 'Undo' if task.completed else 'Done' }}
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+<a href="{{ url_for('add_task') }}" class="btn btn-primary mt-3">Add Task</a>
+<a href="{{ url_for('report') }}" class="btn btn-info mt-3">View Report</a>
+{% endblock %}

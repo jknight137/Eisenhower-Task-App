@@ -1,0 +1,47 @@
+{% extends "base.html" %} {% block content %}
+<h2>Add Task</h2>
+{% for message in get_flashed_messages(with_categories=true) %}
+<div class="alert alert-{{ message[0] }}">{{ message[1] }}</div>
+{% endfor %}
+<form method="POST">
+  <div class="mb-3">
+    <label for="title" class="form-label">Task Title</label>
+    <input type="text" class="form-control" id="title" name="title" required />
+  </div>
+  <div class="mb-3">
+    <label for="urgency" class="form-label">Urgency</label>
+    <select class="form-select" id="urgency" name="urgency">
+      <option value="urgent">Urgent</option>
+      <option value="not urgent">Not Urgent</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="importance" class="form-label">Importance</label>
+    <select class="form-select" id="importance" name="importance">
+      <option value="important">Important</option>
+      <option value="not important">Not Important</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label for="due_date" class="form-label">Due Date (optional)</label>
+    <input type="date" class="form-control" id="due_date" name="due_date" />
+  </div>
+  <div class="mb-3">
+    <label for="impact" class="form-label"
+      >Impact (1-10, how much value this task adds)</label
+    >
+    <input
+      type="number"
+      class="form-control"
+      id="impact"
+      name="impact"
+      min="1"
+      max="10"
+      value="5"
+      required
+    />
+  </div>
+  <button type="submit" class="btn btn-primary">Add Task</button>
+  <a href="{{ url_for('tasks') }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
