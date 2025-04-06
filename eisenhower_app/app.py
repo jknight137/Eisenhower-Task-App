@@ -1,28 +1,37 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, date, timedelta
 
-# Load environment variables
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "default-secret-for-dev")
 
-# Flask-Login setup
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
 class User(UserMixin):
-    def __init__(self, id):
+    def __init__(self, id, name, password):
         self.id = id
+        self.name = name
+        self.password = password  # Store hashed password
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User(user_id)
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT id, name, password FROM users WHERE id = %s', (user_id,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+    if user:
+        return User(user['id'], user['name'], user['password'])
+    return None
 
 def get_db_connection():
     conn = psycopg2.connect(
@@ -35,13 +44,12 @@ def get_db_connection():
     )
     return conn
 
-# Register a custom Jinja2 filter for datetime formatting
 @app.template_filter('datetimeformat')
 def datetimeformat(value, format='%Y-%m-%d'):
     if value is None:
         return ""
     if isinstance(value, str):
-        return value  # Assume it's already formatted if it's a string
+        return value
     return value.strftime(format)
 
 @app.route('/')
@@ -53,11 +61,48 @@ def index():
 def login():
     if request.method == 'POST':
         user_id = request.form['user_id']
-        user = User(user_id)
-        login_user(user)
-        flash("Logged in successfully!", "success")
-        return redirect(url_for('tasks'))
+        password = request.form['password']
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT id, name, password FROM users WHERE id = %s', (user_id,))
+        user_data = cur.fetchone()
+        cur.close()
+        conn.close()
+        if user_data and check_password_hash(user_data['password'], password):
+            user = User(user_data['id'], user_data['name'], user_data['password'])
+            login_user(user)
+            flash("Logged in successfully!", "success")
+            return redirect(url_for('tasks'))
+        else:
+            flash("Invalid username or password.", "danger")
+            return redirect(url_for('login'))
     return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        user_id = request.form['user_id']
+        name = request.form['name']
+        password = request.form['password']
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT id FROM users WHERE id = %s', (user_id,))
+        if cur.fetchone():
+            flash("Username already taken!", "danger")
+            cur.close()
+            conn.close()
+            return redirect(url_for('register'))
+        hashed_password = generate_password_hash(password)
+        cur.execute(
+            'INSERT INTO users (id, name, password) VALUES (%s, %s, %s)',
+            (user_id, name, hashed_password)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        flash("Registered successfully! Please log in.", "success")
+        return redirect(url_for('login'))
+    return render_template('register.html')
 
 @app.route('/logout')
 @login_required
@@ -90,11 +135,12 @@ def add_task():
         urgency = request.form['urgency']
         importance = request.form['importance']
         due_date = request.form['due_date'] or None
+        impact = int(request.form['impact'])
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            'INSERT INTO tasks (title, urgency, importance, due_date, user_id) VALUES (%s, %s, %s, %s, %s)',
-            (title, urgency, importance, due_date, current_user.id)
+            'INSERT INTO tasks (title, urgency, importance, due_date, impact, user_id) VALUES (%s, %s, %s, %s, %s, %s)',
+            (title, urgency, importance, due_date, impact, current_user.id)
         )
         conn.commit()
         cur.close()
@@ -113,9 +159,10 @@ def edit_task(task_id):
         urgency = request.form['urgency']
         importance = request.form['importance']
         due_date = request.form['due_date'] or None
+        impact = int(request.form['impact'])
         cur.execute(
-            'UPDATE tasks SET title = %s, urgency = %s, importance = %s, due_date = %s WHERE id = %s AND user_id = %s',
-            (title, urgency, importance, due_date, task_id, current_user.id)
+            'UPDATE tasks SET title = %s, urgency = %s, importance = %s, due_date = %s, impact = %s WHERE id = %s AND user_id = %s',
+            (title, urgency, importance, due_date, impact, task_id, current_user.id)
         )
         conn.commit()
         cur.close()
@@ -188,29 +235,21 @@ def checkin():
     today = date.today()
     week_ago = today - timedelta(days=7)
     next_week = today + timedelta(days=7)
-
-    # Completed tasks this week
     cur.execute(
         'SELECT * FROM tasks WHERE user_id = %s AND completed = TRUE AND created_at >= %s ORDER BY created_at DESC',
         (current_user.id, week_ago)
     )
     completed_tasks = cur.fetchall()
-
-    # Overdue tasks
     cur.execute(
         'SELECT * FROM tasks WHERE user_id = %s AND completed = FALSE AND due_date < %s',
         (current_user.id, today)
     )
     overdue_tasks = cur.fetchall()
-
-    # Upcoming tasks (next 7 days)
     cur.execute(
         'SELECT * FROM tasks WHERE user_id = %s AND completed = FALSE AND due_date BETWEEN %s AND %s ORDER BY due_date ASC',
         (current_user.id, today, next_week)
     )
     upcoming_tasks = cur.fetchall()
-
-    # Suggested tasks (same as /tasks)
     cur.execute('SELECT * FROM tasks WHERE user_id = %s AND completed = FALSE ORDER BY due_date ASC', (current_user.id,))
     tasks = cur.fetchall()
     for task in tasks:
@@ -218,7 +257,6 @@ def checkin():
         days_until_due = (task['due_date'] - today).days if task['due_date'] else 30
         task['priority'] = impact * (1 if task['importance'] == 'important' else 0.5) / max(days_until_due, 1)
     suggested_tasks = sorted(tasks, key=lambda x: x['priority'], reverse=True)[:int(len(tasks) * 0.2) or 1]
-
     cur.close()
     conn.close()
     return render_template('checkin.html', completed_tasks=completed_tasks, overdue_tasks=overdue_tasks,
@@ -227,14 +265,20 @@ def checkin():
 if __name__ == '__main__':
     conn = get_db_connection()
     cur = conn.cursor()
+    cur.execute('''CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        password TEXT NOT NULL
+    )''')
     cur.execute('''CREATE TABLE IF NOT EXISTS tasks (
         id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         urgency TEXT NOT NULL,
         importance TEXT NOT NULL,
         due_date DATE,
+        impact INTEGER DEFAULT 5,
         completed BOOLEAN DEFAULT FALSE,
-        user_id TEXT NOT NULL,
+        user_id TEXT NOT NULL REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     conn.commit()

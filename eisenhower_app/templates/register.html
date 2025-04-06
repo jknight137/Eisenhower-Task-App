@@ -1,11 +1,36 @@
-{% extends "base.html" %}
-{% block content %}
-    <h2>Register</h2>
-    <form method="POST">
-        <div class="mb-3">
-            <label for="user_id" class="form-label">User ID</label>
-            <input type="text" class="form-control" id="user_id" name="user_id" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Register</button>
-    </form>
+{% extends "base.html" %} {% block content %}
+<h2>Register</h2>
+{% for message in get_flashed_messages(with_categories=true) %}
+<div class="alert alert-{{ message[0] }}">{{ message[1] }}</div>
+{% endfor %}
+<form method="POST">
+  <div class="mb-3">
+    <label for="user_id" class="form-label">Username</label>
+    <input
+      type="text"
+      class="form-control"
+      id="user_id"
+      name="user_id"
+      required
+    />
+  </div>
+  <div class="mb-3">
+    <label for="name" class="form-label">Full Name</label>
+    <input type="text" class="form-control" id="name" name="name" required />
+  </div>
+  <div class="mb-3">
+    <label for="password" class="form-label">Password</label>
+    <input
+      type="password"
+      class="form-control"
+      id="password"
+      name="password"
+      required
+    />
+  </div>
+  <button type="submit" class="btn btn-primary">Register</button>
+  <a href="{{ url_for('login') }}" class="btn btn-link"
+    >Already have an account? Login</a
+  >
+</form>
 {% endblock %}
