@@ -1,0 +1,18 @@
+{% extends "base.html" %} {% block content %}
+<h2>Search Results</h2>
+{% if tasks|length == 0 %}
+<p>No tasks found.</p>
+{% else %}
+<ul>
+  {% for task in tasks %}
+  <li>
+    {{ task.title }} {% if task.due_date %}(Due: {{ task.due_date }}){% endif %}
+    <a href="{{ url_for('edit_task', task_id=task.id) }}">Edit</a>
+    <a href="{{ url_for('delete_task', task_id=task.id) }}">Delete</a>
+    <a href="{{ url_for('toggle_task', task_id=task.id) }}"
+      >{{ 'Undo' if task.completed else 'Done' }}</a
+    >
+  </li>
+  {% endfor %}
+</ul>
+{% endif %} {% endblock %}

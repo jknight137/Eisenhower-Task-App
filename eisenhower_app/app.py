@@ -7,19 +7,22 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, date, timedelta
 
+# Initialize Flask app
 load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "default-secret-for-dev")
 
+# Flask-Login setup
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 
+# User model
 class User(UserMixin):
     def __init__(self, id, name, password):
         self.id = id
         self.name = name
-        self.password = password  # Store hashed password
+        self.password = password
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -33,6 +36,7 @@ def load_user(user_id):
         return User(user['id'], user['name'], user['password'])
     return None
 
+# Database connection
 def get_db_connection():
     conn = psycopg2.connect(
         dbname=os.getenv("DB_NAME"),
@@ -44,6 +48,7 @@ def get_db_connection():
     )
     return conn
 
+# Custom Jinja2 filter for datetime formatting
 @app.template_filter('datetimeformat')
 def datetimeformat(value, format='%Y-%m-%d'):
     if value is None:
@@ -52,6 +57,7 @@ def datetimeformat(value, format='%Y-%m-%d'):
         return value
     return value.strftime(format)
 
+# Routes
 @app.route('/')
 @login_required
 def index():
@@ -118,14 +124,15 @@ def tasks():
     cur = conn.cursor()
     cur.execute('SELECT * FROM tasks WHERE user_id = %s ORDER BY due_date ASC', (current_user.id,))
     tasks = cur.fetchall()
+    today = date.today()
     for task in tasks:
         impact = task.get('impact', 5)
-        days_until_due = (task['due_date'] - date.today()).days if task['due_date'] else 30
+        days_until_due = (task['due_date'] - today).days if task['due_date'] else 30
         task['priority'] = impact * (1 if task['importance'] == 'important' else 0.5) / max(days_until_due, 1)
     suggested_tasks = sorted(tasks, key=lambda x: x['priority'], reverse=True)[:int(len(tasks) * 0.2) or 1]
     cur.close()
     conn.close()
-    return render_template('tasks.html', tasks=tasks, suggested_tasks=suggested_tasks, today=date.today())
+    return render_template('tasks.html', tasks=tasks, suggested_tasks=suggested_tasks, today=today)
 
 @app.route('/add_task', methods=['GET', 'POST'])
 @login_required
@@ -136,11 +143,12 @@ def add_task():
         importance = request.form['importance']
         due_date = request.form['due_date'] or None
         impact = int(request.form['impact'])
+        frequency = request.form['frequency']
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            'INSERT INTO tasks (title, urgency, importance, due_date, impact, user_id) VALUES (%s, %s, %s, %s, %s, %s)',
-            (title, urgency, importance, due_date, impact, current_user.id)
+            'INSERT INTO tasks (title, urgency, importance, due_date, impact, frequency, user_id) VALUES (%s, %s, %s, %s, %s, %s, %s)',
+            (title, urgency, importance, due_date, impact, frequency, current_user.id)
         )
         conn.commit()
         cur.close()
@@ -160,9 +168,10 @@ def edit_task(task_id):
         importance = request.form['importance']
         due_date = request.form['due_date'] or None
         impact = int(request.form['impact'])
+        frequency = request.form['frequency']
         cur.execute(
-            'UPDATE tasks SET title = %s, urgency = %s, importance = %s, due_date = %s, impact = %s WHERE id = %s AND user_id = %s',
-            (title, urgency, importance, due_date, impact, task_id, current_user.id)
+            'UPDATE tasks SET title = %s, urgency = %s, importance = %s, due_date = %s, impact = %s, frequency = %s WHERE id = %s AND user_id = %s',
+            (title, urgency, importance, due_date, impact, frequency, task_id, current_user.id)
         )
         conn.commit()
         cur.close()
@@ -195,10 +204,22 @@ def delete_task(task_id):
 def toggle_task(task_id):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute(
-        'UPDATE tasks SET completed = NOT completed WHERE id = %s AND user_id = %s',
-        (task_id, current_user.id)
-    )
+    cur.execute('SELECT * FROM tasks WHERE id = %s AND user_id = %s', (task_id, current_user.id))
+    task = cur.fetchone()
+    if task and not task['completed'] and task['frequency'] != 'none':
+        new_due_date = None
+        if task['frequency'] == 'daily':
+            new_due_date = task['due_date'] + timedelta(days=1) if task['due_date'] else date.today() + timedelta(days=1)
+        elif task['frequency'] == 'weekly':
+            new_due_date = task['due_date'] + timedelta(weeks=1) if task['due_date'] else date.today() + timedelta(weeks=1)
+        elif task['frequency'] == 'monthly':
+            new_due_date = task['due_date'] + timedelta(days=30) if task['due_date'] else date.today() + timedelta(days=30)
+        if new_due_date:
+            cur.execute(
+                'INSERT INTO tasks (title, urgency, importance, due_date, impact, frequency, user_id) VALUES (%s, %s, %s, %s, %s, %s, %s)',
+                (task['title'], task['urgency'], task['importance'], new_due_date, task['impact'], task['frequency'], current_user.id)
+            )
+    cur.execute('UPDATE tasks SET completed = NOT completed WHERE id = %s AND user_id = %s', (task_id, current_user.id))
     conn.commit()
     cur.close()
     conn.close()
@@ -262,6 +283,18 @@ def checkin():
     return render_template('checkin.html', completed_tasks=completed_tasks, overdue_tasks=overdue_tasks,
                           upcoming_tasks=upcoming_tasks, suggested_tasks=suggested_tasks, today=today)
 
+@app.route('/search', methods=['GET'])
+@login_required
+def search():
+    query = request.args.get('q', '')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM tasks WHERE user_id = %s AND title ILIKE %s", (current_user.id, f'%{query}%'))
+    tasks = cur.fetchall()
+    cur.close()
+    conn.close()
+    return render_template('search_results.html', tasks=tasks)
+
 if __name__ == '__main__':
     conn = get_db_connection()
     cur = conn.cursor()
@@ -277,6 +310,7 @@ if __name__ == '__main__':
         importance TEXT NOT NULL,
         due_date DATE,
         impact INTEGER DEFAULT 5,
+        frequency TEXT DEFAULT 'none',
         completed BOOLEAN DEFAULT FALSE,
         user_id TEXT NOT NULL REFERENCES users(id),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
