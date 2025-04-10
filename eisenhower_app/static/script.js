@@ -21,5 +21,22 @@ function checkForNotifications() {
 function showNotification(message) {
   alert(message); // Or use a more sophisticated notification method
 }
+// static/script.js
+async function subscribeToPush() {
+  const registration = await navigator.serviceWorker.ready;
+  const subscription = await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: "your_vapid_public_key", // Generate via push service
+  });
+  fetch("/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(subscription),
+  });
+}
+
+if ("PushManager" in window) {
+  subscribeToPush();
+}
 
 window.setInterval(checkForNotifications, 60000); // Check every minute

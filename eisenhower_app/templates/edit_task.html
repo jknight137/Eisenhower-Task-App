@@ -31,6 +31,15 @@
             <label for="impact" class="form-label">Impact (1-10, how much value this task adds)</label>
             <input type="number" class="form-control" id="impact" name="impact" min="1" max="10" value="{{ task.impact|default(5) }}" required>
         </div>
+        <div class="mb-3">
+            <label for="frequency" class="form-label">Frequency</label>
+            <select class="form-select" id="frequency" name="frequency">
+                <option value="none" {% if task.frequency == 'none' %}selected{% endif %}>None</option>
+                <option value="daily" {% if task.frequency == 'daily' %}selected{% endif %}>Daily</option>
+                <option value="weekly" {% if task.frequency == 'weekly' %}selected{% endif %}>Weekly</option>
+                <option value="monthly" {% if task.frequency == 'monthly' %}selected{% endif %}>Monthly</option>
+            </select>
+        </div>
         <button type="submit" class="btn btn-primary">Update Task</button>
         <a href="{{ url_for('tasks') }}" class="btn btn-secondary">Cancel</a>
     </form>

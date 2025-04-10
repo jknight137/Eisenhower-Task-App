@@ -41,6 +41,15 @@
       required
     />
   </div>
+  <div class="mb-3">
+    <label for="frequency" class="form-label">Frequency</label>
+    <select class="form-select" id="frequency" name="frequency">
+      <option value="none">None</option>
+      <option value="daily">Daily</option>
+      <option value="weekly">Weekly</option>
+      <option value="monthly">Monthly</option>
+    </select>
+  </div>
   <button type="submit" class="btn btn-primary">Add Task</button>
   <a href="{{ url_for('tasks') }}" class="btn btn-secondary">Cancel</a>
 </form>

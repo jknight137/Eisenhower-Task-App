@@ -1,40 +1,45 @@
 body {
   font-family: Arial, sans-serif;
+  background-color: #000000; /* Black background */
+  color: #00ffff; /* Neon cyan text */
 }
 
-/* Flash message styling */
-.alert {
-  margin-top: 10px;
-  padding: 15px;
-  border-radius: 5px;
-}
-
-/* Quadrant styling */
+/* Quadrant styling with distinct neon colors */
 .border-danger {
-  border: 2px solid red;
-  padding: 10px;
-  margin-bottom: 15px;
+  border: 3px solid #ff00ff !important; /* Neon Pink for Urgent & Important */
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: rgba(255, 0, 255, 0.05); /* Slight tint */
 }
 .border-success {
-  border: 2px solid green;
-  padding: 10px;
-  margin-bottom: 15px;
+  border: 3px solid #00ffff !important; /* Neon Cyan for Important, Not Urgent */
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: rgba(0, 255, 255, 0.05);
 }
 .border-warning {
-  border: 2px solid orange;
-  padding: 10px;
-  margin-bottom: 15px;
+  border: 3px solid #ccff00 !important; /* Neon Lime for Urgent, Not Important */
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: rgba(204, 255, 0, 0.05);
 }
 .border-secondary {
-  border: 2px solid gray;
-  padding: 10px;
-  margin-bottom: 15px;
+  border: 3px solid #8000ff !important; /* Neon Purple for Not Urgent, Not Important */
+  padding: 15px;
+  margin-bottom: 20px;
+  background-color: rgba(128, 0, 255, 0.05);
 }
 
 /* Completed tasks */
 .completed {
   text-decoration: line-through;
   color: gray;
+}
+
+/* Overdue tasks */
+.overdue {
+  color: #ff00ff; /* Neon pink to match Urgent & Important */
+  font-weight: bold;
 }
 
 /* Task list items */
@@ -47,17 +52,38 @@ li {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.overdue {
-  color: red;
-  font-weight: bold;
+  border: 1px solid #00ffff; /* Neon cyan border */
+  padding: 5px;
+  border-radius: 5px;
 }
 
 /* Buttons */
 .btn-sm {
   margin-left: 5px;
+  background-color: #00ffff; /* Neon cyan */
+  color: #000;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 10px;
+  box-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff;
+  transition: 0.2s ease-in-out;
+}
+.btn-sm:hover {
+  background-color: #ff00ff; /* Neon pink on hover */
+  color: #fff;
+  box-shadow: 0 0 8px #ff00ff, 0 0 15px #ff00ff;
 }
 
+/* Links */
+a,
+a:visited {
+  color: #ff00ff; /* Neon pink */
+}
+a:hover {
+  color: #ffffff; /* White on hover */
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
   .container {
     padding: 10px;
@@ -65,4 +91,14 @@ li {
   .btn-sm {
     font-size: 14px;
   }
+}
+
+/* Optional neon utility classes */
+.neon-glow {
+  color: #ff00ff;
+  text-shadow: 0 0 5px #ff00ff, 0 0 10px #ff00ff;
+}
+.neon-blue {
+  color: #00ffff;
+  text-shadow: 0 0 5px #00ffff, 0 0 10px #00ffff;
 }

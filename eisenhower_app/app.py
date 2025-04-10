@@ -1,11 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_apscheduler import APScheduler
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, date, timedelta
+from pywebpush import webpush
+import json
 
 # Initialize Flask app
 load_dotenv()
@@ -38,14 +41,17 @@ def load_user(user_id):
 
 # Database connection
 def get_db_connection():
-    conn = psycopg2.connect(
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT", "5432"),
-        cursor_factory=RealDictCursor
-    )
+    if 'DATABASE_URL' in os.environ:
+        conn = psycopg2.connect(os.environ['DATABASE_URL'], cursor_factory=RealDictCursor)
+    else:
+        conn = psycopg2.connect(
+            dbname=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT", "5432"),
+            cursor_factory=RealDictCursor
+        )
     return conn
 
 # Custom Jinja2 filter for datetime formatting
@@ -62,6 +68,42 @@ def datetimeformat(value, format='%Y-%m-%d'):
 @login_required
 def index():
     return redirect(url_for('tasks'))
+from pywebpush import webpush
+import json
+
+@app.route('/subscribe', methods=['POST'])
+@login_required
+def subscribe():
+    subscription = request.get_json()
+    # Store subscription in DB (e.g., new table 'subscriptions')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        'INSERT INTO subscriptions (user_id, subscription) VALUES (%s, %s)',
+        (current_user.id, json.dumps(subscription))
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({"status": "success"})
+
+@app.route('/send_notification', methods=['POST'])
+@login_required
+def send_notification():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT subscription FROM subscriptions WHERE user_id = %s', (current_user.id,))
+    subscription = cur.fetchone()
+    cur.close()
+    conn.close()
+    if subscription:
+        webpush(
+            subscription_info=json.loads(subscription['subscription']),
+            data=json.dumps({"title": "Task Reminder", "body": "You have overdue tasks!"}),
+            vapid_private_key="your_vapid_private_key",
+            vapid_claims={"sub": "mailto:your@email.com"}
+        )
+    return jsonify({"status": "sent"})
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -282,6 +324,38 @@ def checkin():
     conn.close()
     return render_template('checkin.html', completed_tasks=completed_tasks, overdue_tasks=overdue_tasks,
                           upcoming_tasks=upcoming_tasks, suggested_tasks=suggested_tasks, today=today)
+
+
+# Initialize scheduler
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
+
+# Scheduled task
+@scheduler.task('interval', id='create_recurring_tasks', seconds=86400)  # Daily
+def create_recurring_tasks():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    today = date.today()
+    cur.execute("SELECT * FROM tasks WHERE frequency != 'none' AND completed = TRUE")
+    completed_tasks = cur.fetchall()
+    for task in completed_tasks:
+        new_due_date = None
+        if task['frequency'] == 'daily':
+            new_due_date = (task['due_date'] or today) + timedelta(days=1)
+        elif task['frequency'] == 'weekly':
+            new_due_date = (task['due_date'] or today) + timedelta(weeks=1)
+        elif task['frequency'] == 'monthly':
+            new_due_date = (task['due_date'] or today) + timedelta(days=30)
+        if new_due_date:
+            cur.execute(
+                'INSERT INTO tasks (title, urgency, importance, due_date, impact, frequency, user_id, completed) '
+                'VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
+                (task['title'], task['urgency'], task['importance'], new_due_date, task['impact'], task['frequency'], task['user_id'], False)
+            )
+    conn.commit()
+    cur.close()
+    conn.close()
 
 @app.route('/search', methods=['GET'])
 @login_required

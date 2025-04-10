@@ -3,9 +3,10 @@
   "short_name": "PMaster",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#007bff",
+  "background_color": "#000000",
+  "theme_color": "#00FFFF",
   "icons": [
     { "src": "/static/icon.png", "sizes": "192x192", "type": "image/png" }
-  ]
+  ],
+  "scope": "/"
 }
